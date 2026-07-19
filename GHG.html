@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>碳盤查計算小工具</title>
+  <style>
+    :root {
+      --bg: #f4f7f5;
+      --panel: #ffffff;
+      --text: #1f2d26;
+      --muted: #617168;
+      --line: #d9e2dc;
+      --primary: #1f6f50;
+      --primary-dark: #17563e;
+      --soft: #eaf4ee;
+      --warn: #8a5a00;
+      --warn-bg: #fff7e6;
+      --danger: #a43131;
+      --shadow: 0 10px 30px rgba(31, 45, 38, 0.08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+
+    header {
+      background: linear-gradient(135deg, #174d39, #27825f);
+      color: white;
+      padding: 28px 18px;
+    }
+
+    header .wrap, main {
+      width: min(1120px, calc(100% - 28px));
+      margin: 0 auto;
+    }
+
+    h1 { margin: 0 0 6px; font-size: clamp(1.55rem, 4vw, 2.2rem); }
+    header p { margin: 0; opacity: 0.9; }
+
+    main { padding: 22px 0 40px; }
+
+    .notice {
+      background: var(--warn-bg);
+      border: 1px solid #ead7a5;
+      border-radius: 10px;
+      padding: 11px 14px;
+      margin-bottom: 16px;
+      color: #684500;
+      font-size: 0.94rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tab {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 15px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .tab[aria-selected="true"] {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .panel {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel.active { display: block; }
+    .hidden { display: none !important; }
+
+    h2 { margin: 0 0 4px; font-size: 1.35rem; }
+    .desc { color: var(--muted); margin: 0 0 18px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid #bfcac3;
+      border-radius: 9px;
+      padding: 10px 11px;
+      background: white;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    input:focus, select:focus {
+      outline: 3px solid rgba(31, 111, 80, 0.15);
+      border-color: var(--primary);
+    }
+
+    .field-note {
+      display: block;
+      color: var(--muted);
+      font-size: 0.83rem;
+      margin-top: 4px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 18px;
+    }
+
+    button.action {
+      appearance: none;
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary { background: var(--primary); color: white; }
+    .primary:hover { background: var(--primary-dark); }
+    .secondary { background: var(--soft); color: var(--primary-dark); }
+    .ghost { background: #f0f2f1; color: var(--text); }
+    .danger { background: #faeaea; color: var(--danger); }
+
+    .result {
+      margin-top: 18px;
+      border-left: 5px solid var(--primary);
+      background: #f7fbf8;
+      padding: 14px 15px;
+      border-radius: 10px;
+      display: none;
+    }
+
+    .result.show { display: block; }
+    .result strong.big { font-size: 1.4rem; color: var(--primary-dark); }
+    .result strong.big.effective-days { color: #064f9e; }
+    .formula {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 8px;
+      background: white;
+      border: 1px dashed #b9c9bf;
+      overflow-wrap: anywhere;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+      margin-top: 10px;
+      min-height: 1.3em;
+    }
+
+    .section-title {
+      margin: 22px 0 10px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .record-box {
+      margin-top: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f1f5f2; }
+    td:nth-child(3), td:nth-child(4) { white-space: pre-wrap; }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 760px) {
+      .grid, .grid.three { grid-template-columns: 1fr; }
+      .panel { padding: 16px; }
+    }
+
+    @media print {
+      header, .tabs, .actions, .notice, footer { display: none !important; }
+      body { background: white; }
+      .panel, .record-box { box-shadow: none; border: 1px solid #aaa; }
+      .panel { display: none !important; }
+      .panel.active { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>碳盤查計算小工具</h1>
+      <p>天數計算｜質量平衡法｜重量／體積換算｜常用單位換算｜計算說明</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="notice">
+      本工具僅在瀏覽器本機計算，不會上傳資料。正式盤查時，仍應以原始憑證、設備規格、供應商資料及適用排放係數版本為準。
+    </div>
+
+    <nav class="tabs" aria-label="計算功能">
+      <button class="tab" aria-selected="true" data-target="days">1. 天數計算</button>
+      <button class="tab" aria-selected="false" data-target="mass-balance">2. 質量平衡法</button>
+      <button class="tab" aria-selected="false" data-target="density">3. 重量／體積換算</button>
+      <button class="tab" aria-selected="false" data-target="unit">4. 單位換算</button>
+      <button class="tab" aria-selected="false" data-target="mass-balance-guide">5. 質量平衡法說明</button>
+    </nav>
+
+    <section id="days" class="panel active">
+      <h2>天數計算</h2>
+      <p class="desc">計算活動總天數、盤查期間內有效天數、分攤比例，以及依天數比例分攤後的活動數據。</p>
+
+      <div class="grid">
+        <div>
+          <label for="invStart">盤查期間起日</label>
+          <input type="date" id="invStart">
+        </div>
+        <div>
+          <label for="invEnd">盤查期間迄日</label>
+          <input type="date" id="invEnd">
+        </div>
+        <div>
+          <label for="actStart">活動／設備起日</label>
+          <input type="date" id="actStart">
+          <span class="field-note">未填時，視同盤查期間起日。</span>
+        </div>
+        <div>
+          <label for="actEnd">活動／設備迄日</label>
+          <input type="date" id="actEnd">
+          <span class="field-note">未填時，視同盤查期間迄日。</span>
+        </div>
+        <div>
+          <label for="dayMethod">計日方式</label>
+          <select id="dayMethod">
+            <option value="inclusive">含起日與迄日（常用於使用天數）</option>
+            <option value="exclusive">日期差，不加 1 日</option>
+          </select>
+        </div>
+        <div>
+          <label for="activityAmount">活動總數據</label>
+          <input type="number" id="activityAmount" step="any" min="0" placeholder="例如：55">
+          <span class="field-note">例如跨年度發票、租賃、燃料或物料的總量。</span>
+        </div>
+        <div>
+          <label for="activityUnit">活動數據單位</label>
+          <input type="text" id="activityUnit" value="kg" placeholder="例如：kg、L、kWh">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="action primary" onclick="calcDays()">計算</button>
+        <button class="action secondary" onclick="addCurrentRecord('days')">加入計算紀錄</button>
+        <button class="action ghost" onclick="resetDays()">清除</button>
+      </div>
+      <div id="daysError" class="error"></div>
+      <div id="daysResult" class="result"></div>
+    </section>
+
+    <section id="mass-balance" class="panel">
+      <h2>含碳物料質量平衡法</h2>
+      <p class="desc">將乙炔、焊條或其他含碳物料的使用量，依碳含量及氧化效率換算為 CO₂ 排放量。</p>
+
+      <div class="notice">
+        核心公式：CO₂ 排放量 = 物料使用量 × 純度 × 碳含量 × 氧化／燃燒效率 × CO₂／C 質量比。<br>
+        CO₂／C 質量比會依所選原子量基準自動切換；「採購量」不一定等於「使用量」，若期末仍有庫存，建議使用庫存平衡。
+      </div>
+
+      <div class="grid">
+        <div>
+          <label for="mbAtomicBasis">原子量計算基準</label>
+          <select id="mbAtomicBasis" onchange="updateMbAtomicBasis()">
+            <option value="moenv">台灣環境部盤查指引（整數：C=12、H=1、O=16）</option>
+            <option value="standard">標準原子量（小數：C=12.011、H=1.008、O=15.999）</option>
+          </select>
+          <span id="mbAtomicBasisNote" class="field-note">採 CO₂/C = 44/12；乙炔分子量 = 26。</span>
+        </div>
+        <div>
+          <label for="mbPreset">物料類型</label>
+          <select id="mbPreset" onchange="updateMbPreset()">
+            <option value="acetylene">乙炔 C₂H₂</option>
+            <option value="butaneTorch">瓦斯噴燈燃料－丁烷／異丁烷 C₄H₁₀</option>
+            <option value="weldingSS308L">焊條 SS308L（指引範例 0.04 wt%）</option>
+            <option value="weldingCustom">焊條（自行輸入供應商碳含量）</option>
+            <option value="customCarbon">其他含碳物料（直接輸入碳含量）</option>
+            <option value="customFormula">其他化合物（依碳原子數與分子量）</option>
+          </select>
+        </div>
+        <div>
+          <label for="mbMaterialName">物料名稱</label>
+          <input type="text" id="mbMaterialName" value="乙炔">
+        </div>
+        <div>
+          <label for="mbQuantityMethod">活動數據計算方式</label>
+          <select id="mbQuantityMethod" onchange="updateMbQuantityMethod()">
+            <option value="direct">直接輸入使用量／採購量</option>
+            <option value="stock">依期初、進貨及期末存量計算使用量</option>
+          </select>
+        </div>
+        <div id="mbActivitySourceWrap">
+          <label for="mbActivitySource">活動數據來源</label>
+          <select id="mbActivitySource">
+            <option value="used">實際使用紀錄</option>
+            <option value="purchase">採購量作為保守估計</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="mbDirectArea" class="section-title">
+        <h3 style="margin-top:0;">活動量</h3>
+        <div class="grid">
+          <div>
+            <label for="mbActivityAmount">物料數量</label>
+            <input type="number" id="mbActivityAmount" value="10" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbActivityUnit">數量單位</label>
+            <select id="mbActivityUnit">
+              <option>kg</option>
+              <option>g</option>
+              <option>t</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="mbStockArea" class="section-title hidden">
+        <h3 style="margin-top:0;">庫存平衡</h3>
+        <div class="grid three">
+          <div>
+            <label for="mbBeginning">期初存量</label>
+            <input type="number" id="mbBeginning" value="0" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbPurchased">本期購入量</label>
+            <input type="number" id="mbPurchased" value="10" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbOtherIn">其他移入量</label>
+            <input type="number" id="mbOtherIn" value="0" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbEnding">期末存量</label>
+            <input type="number" id="mbEnding" value="0" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbRecovered">退回／回收量</label>
+            <input type="number" id="mbRecovered" value="0" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbOtherOut">其他移出量</label>
+            <input type="number" id="mbOtherOut" value="0" step="any" min="0">
+          </div>
+          <div>
+            <label for="mbStockUnit">共同單位</label>
+            <select id="mbStockUnit">
+              <option>kg</option>
+              <option>g</option>
+              <option>t</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <h3 style="margin-top:0;">含碳與轉化參數</h3>
+        <div class="grid three">
+          <div>
+            <label for="mbPurity">物料純度（%）</label>
+            <input type="number" id="mbPurity" value="100" step="any" min="0" max="100">
+          </div>
+          <div>
+            <label for="mbCarbonContent">碳含量（wt%）</label>
+            <input type="number" id="mbCarbonContent" value="92.30769231" step="any" min="0" max="100">
+            <span id="mbCarbonNote" class="field-note">乙炔碳含量 = 24／26 = 92.3077%。</span>
+          </div>
+          <div>
+            <label for="mbOxidation">氧化／燃燒效率（%）</label>
+            <input type="number" id="mbOxidation" value="100" step="any" min="0" max="100">
+          </div>
+        </div>
+
+        <div id="mbFormulaArea" class="grid hidden" style="margin-top:14px;">
+          <div>
+            <label for="mbCarbonAtoms">每分子碳原子數</label>
+            <input type="number" id="mbCarbonAtoms" value="2" step="1" min="0" oninput="updateFormulaCarbon()">
+          </div>
+          <div>
+            <label for="mbMolecularWeight">物質分子量</label>
+            <input type="number" id="mbMolecularWeight" value="26" step="any" min="0" oninput="updateFormulaCarbon()">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="action primary" onclick="calcMassBalance()">計算 CO₂</button>
+        <button class="action secondary" onclick="addCurrentRecord('massBalance')">加入計算紀錄</button>
+        <button class="action ghost" onclick="resetMassBalance()">清除</button>
+      </div>
+      <div id="mbError" class="error"></div>
+      <div id="mbResult" class="result"></div>
+    </section>
+
+    <section id="density" class="panel">
+      <h2>重量／體積換算</h2>
+      <p class="desc">依密度將重量與體積互換。密度必須與盤查物料、溫度與壓力條件相符。</p>
+
+      <div class="grid">
+        <div>
+          <label for="densityValue">原始數值</label>
+          <input type="number" id="densityValue" step="any" min="0">
+        </div>
+        <div>
+          <label for="densityDirection">換算方向</label>
+          <select id="densityDirection" onchange="updateDensityUnits()">
+            <option value="massToVolume">重量 → 體積</option>
+            <option value="volumeToMass">體積 → 重量</option>
+          </select>
+        </div>
+        <div>
+          <label for="densityFromUnit">原始單位</label>
+          <select id="densityFromUnit"></select>
+        </div>
+        <div>
+          <label for="densityToUnit">目標單位</label>
+          <select id="densityToUnit"></select>
+        </div>
+        <div>
+          <label for="densityNumber">密度</label>
+          <input type="number" id="densityNumber" step="any" min="0">
+        </div>
+        <div>
+          <label for="densityUnit">密度單位</label>
+          <select id="densityUnit">
+            <option value="kg/L">kg/L</option>
+            <option value="kg/m3">kg/m³</option>
+            <option value="g/mL">g/mL</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="action primary" onclick="calcDensity()">計算</button>
+        <button class="action secondary" onclick="addCurrentRecord('density')">加入計算紀錄</button>
+        <button class="action ghost" onclick="resetDensity()">清除</button>
+      </div>
+      <div id="densityError" class="error"></div>
+      <div id="densityResult" class="result"></div>
+
+      <div class="notice" style="margin-top:18px;margin-bottom:0;">
+        氣體的 m³、Nm³、Sm³ 會受溫度、壓力及基準狀態影響，不能只靠液體密度直接互換；請優先使用帳單或供應商標示的原始計量單位。
+      </div>
+    </section>
+
+    <section id="unit" class="panel">
+      <h2>常用單位換算</h2>
+      <p class="desc">提供盤查常見的質量、體積、能源、時間及排放量單位換算。</p>
+
+      <div class="grid">
+        <div>
+          <label for="unitCategory">類別</label>
+          <select id="unitCategory" onchange="updateUnitOptions()">
+            <option value="mass">質量</option>
+            <option value="volume">體積</option>
+            <option value="energy">能源</option>
+            <option value="time">時間</option>
+            <option value="emission">溫室氣體排放量</option>
+          </select>
+        </div>
+        <div>
+          <label for="unitValue">原始數值</label>
+          <input type="number" id="unitValue" step="any">
+        </div>
+        <div>
+          <label for="unitFrom">原始單位</label>
+          <select id="unitFrom"></select>
+        </div>
+        <div>
+          <label for="unitTo">目標單位</label>
+          <select id="unitTo"></select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="action primary" onclick="calcUnit()">計算</button>
+        <button class="action secondary" onclick="addCurrentRecord('unit')">加入計算紀錄</button>
+        <button class="action ghost" onclick="resetUnit()">清除</button>
+      </div>
+      <div id="unitError" class="error"></div>
+      <div id="unitResult" class="result"></div>
+    </section>
+
+
+    <section id="mass-balance-guide" class="panel">
+      <h2>質量平衡法詳細說明</h2>
+      <p class="desc">說明乙炔、焊條及其他含碳物料如何由活動量換算為 CO₂ 排放量，以及兩套原子量基準的差異。</p>
+
+      <div class="notice">
+        盤查重點不是小數位越多越好，而是計算基準、活動數據、碳含量、純度與氧化效率皆有依據，且同一盤查期間維持一致。
+      </div>
+
+      <h3>一、通用計算公式</h3>
+      <div class="formula">
+        CO₂ 排放量（kg CO₂）<br>
+        = 物料使用量（kg） × 純度 × 碳含量 × 氧化／燃燒效率 × CO₂／C 質量比<br><br>
+        CO₂ 排放量（tCO₂e） = CO₂ 排放量（kg CO₂） ÷ 1,000
+      </div>
+
+      <h3 class="section-title">二、原子量計算基準</h3>
+      <div class="table-wrap">
+        <table style="min-width:700px;">
+          <thead><tr><th>選項</th><th>原子量</th><th>CO₂ 分子量</th><th>CO₂／C 質量比</th><th>建議使用情況</th></tr></thead>
+          <tbody>
+            <tr><td>台灣環境部盤查指引（整數）</td><td>C=12、H=1、O=16</td><td>44</td><td>44／12 = 3.6666667</td><td>依台灣環境部指引、主管機關範例或查證作業計算時優先使用。</td></tr>
+            <tr><td>標準原子量（小數）</td><td>C=12.011、H=1.008、O=15.999</td><td>44.009</td><td>44.009／12.011 ≈ 3.6640579</td><td>研究、工程計算或既有制度明確要求使用小數原子量時使用。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="field-note">不可只將 12 改成 12.011，卻仍沿用其他整數分子量；碳、氫、氧及化合物分子量應使用同一套基準。</p>
+
+      <h3 class="section-title">三、乙炔計算</h3>
+      <div class="formula">
+        完全燃燒反應式：2C₂H₂ + 5O₂ → 4CO₂ + 2H₂O<br><br>
+        每 1 mol 乙炔會形成 2 mol CO₂，因此：<br>
+        乙炔 CO₂ 排放量 = 乙炔使用量 ×（2 × CO₂ 分子量 ÷ 乙炔分子量）× 純度 × 燃燒效率
+      </div>
+      <div class="grid" style="margin-top:14px;">
+        <div class="formula"><strong>環境部整數基準</strong><br>乙炔分子量 = 2×12 + 2×1 = 26<br>換算係數 = 2×44／26 = 88／26<br>等同於：24／26 × 44／12</div>
+        <div class="formula"><strong>標準原子量基準</strong><br>乙炔分子量 = 2×12.011 + 2×1.008 = 26.038<br>換算係數 = 2×44.009／26.038<br>等同於：24.022／26.038 × 44.009／12.011</div>
+      </div>
+
+      <h3 class="section-title">四、瓦斯噴燈燃料（丁烷／異丁烷）計算</h3>
+      <div class="formula">
+        完全燃燒反應式：2C₄H₁₀ + 13O₂ → 8CO₂ + 10H₂O<br><br>
+        2 mol 丁烷會形成 8 mol CO₂，因此：<br>
+        丁烷 CO₂ 排放量 = 丁烷使用量 ×〔（8 × CO₂ 分子量）÷（2 × 丁烷分子量）〕× 純度 × 燃燒效率
+      </div>
+      <div class="grid" style="margin-top:14px;">
+        <div class="formula">
+          <strong>環境部整數基準</strong><br>
+          丁烷分子量 = 4×12 + 10×1 = 58<br>
+          2 mol 丁烷質量 = 2×58 = 116<br>
+          8 mol CO₂ 質量 = 8×44 = 352<br>
+          換算係數 = 352／116 = 3.0344828<br>
+          等同於：48／58 × 44／12
+        </div>
+        <div class="formula">
+          <strong>標準原子量基準</strong><br>
+          丁烷分子量 = 4×12.011 + 10×1.008 = 58.124<br>
+          換算係數 = 4×44.009／58.124<br>
+          ≈ 3.0286284 kg CO₂/kg 丁烷<br>
+          等同於：48.044／58.124 × 44.009／12.011
+        </div>
+      </div>
+      <p>
+        <strong>352／116 的算法是正確的，但前提是燃料為丁烷或異丁烷 C₄H₁₀，並假設完全燃燒。</strong>
+        正丁烷與異丁烷的結構不同，但分子式相同，因此此質量換算係數相同。
+        「瓦斯噴燈」是器具名稱，不代表燃料一定是丁烷；正式盤查前應查看瓦斯罐標示、採購規格或安全資料表（SDS）。
+        若燃料含丙烷、丙烯或其他成分，應依各成分的重量比例分別計算 CO₂ 後加總，不宜直接使用 352／116。
+      </p>
+
+      <h3 class="section-title">五、焊條計算</h3>
+      <div class="formula">焊條 CO₂ 排放量<br>= 焊條使用量 × 焊條碳含量（wt%）× 氧化效率 × CO₂／C 質量比</div>
+      <p>焊條不是全部重量都會轉成 CO₂，應以供應商商品標示、材質證明或檢測報告中的碳含量計算。例如碳含量 0.04 wt%，輸入欄位應填 0.04，而不是填 0.0004。若依適用指引無法取得碳含量佐證，才依其保守性要求處理。</p>
+
+      <h3 class="section-title">六、活動數據的選擇</h3>
+      <div class="formula">實際使用量 = 期初存量 + 本期購入量 + 其他移入量 − 期末存量 − 退回／回收量 − 其他移出量</div>
+      <p>應優先使用實際使用紀錄。只有採購紀錄時，可將採購量作為保守估計，但若年底仍有庫存，採購量會高於實際使用量。使用哪一種活動數據，應在盤查報告中說明資料來源與限制。</p>
+
+      <h3 class="section-title">七、純度、碳含量與燃燒效率</h3>
+      <p><strong>純度</strong>是物料中目標化合物所占比例；<strong>碳含量</strong>是物料中碳的質量百分比；<strong>燃燒／氧化效率</strong>則表示碳實際轉化為 CO₂ 的比例。若選用 100%，代表假設全部碳均轉為 CO₂。</p>
+
+      <h3 class="section-title">八、單位與結果判讀</h3>
+      <div class="formula">1 t = 1,000 kg<br>CO₂ 的 GWP = 1，因此 tCO₂ 與 tCO₂e 數值相同。<br>本工具以 tCO₂e 為主顯示，並在下方保留 kg CO₂ 供複核。</div>
+
+      <h3 class="section-title">九、盤查與查證注意事項</h3>
+      <p>計算工作底稿應至少保留：物料名稱與規格、活動數據來源、期間、使用量或庫存平衡資料、純度、碳含量佐證、氧化效率依據、原子量計算基準、公式及單位換算。跨年度應維持方法一致；若更換計算基準，應記錄更換原因並評估是否需要重算基準年。</p>
+
+      <div class="notice" style="margin-top:18px;margin-bottom:0;">參考來源：台灣環境部《溫室氣體排放量盤查作業指引（大專校院適用）》乙炔與焊條範例；NIST Chemistry WebBook 丁烷分子式與分子量；CIAAW／IUPAC 標準原子量資料。正式申報或查證仍應確認瓦斯罐成分、組織當年度適用之法規、指引與主管機關要求。</div>
+    </section>
+
+    <section class="record-box">
+      <h2>計算紀錄</h2>
+      <p class="desc">按各分頁的「加入計算紀錄」後，可匯出 CSV 作為工作底稿。紀錄會保存在目前瀏覽器。</p>
+      <div class="actions" style="margin-top:0;margin-bottom:12px;">
+        <button class="action primary" onclick="exportRecords()">匯出 CSV</button>
+        <button class="action ghost" onclick="window.print()">列印目前頁面</button>
+        <button class="action danger" onclick="clearRecords()">清除全部紀錄</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>功能</th>
+              <th>輸入資料</th>
+              <th>公式</th>
+              <th>結果</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recordBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      版本 1.5｜天數頁統一總天數與有效天數字級、有效天數改為深藍色，並統一數值最多顯示 8 位小數。
+    </footer>
+  </main>
+
+  <script>
+    const currentResults = {};
+    let records = JSON.parse(localStorage.getItem('carbonCalcRecords') || '[]');
+
+    const nf = new Intl.NumberFormat('zh-TW', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 8,
+      useGrouping: true
+    });
+
+    function fmt(n) {
+      if (!Number.isFinite(n)) return '—';
+      if (n !== 0 && Math.abs(n) < 1e-8) {
+        return n.toExponential(8)
+          .replace(/(\.\d*?[1-9])0+e/, '$1e')
+          .replace(/\.0+e/, 'e');
+      }
+      return nf.format(n);
+    }
+
+    function num(id) {
+      const value = document.getElementById(id).value;
+      return value === '' ? NaN : Number(value);
+    }
+
+    function setError(id, message = '') {
+      document.getElementById(id).textContent = message;
+    }
+
+    function showResult(id, html) {
+      const el = document.getElementById(id);
+      el.innerHTML = html;
+      el.classList.add('show');
+    }
+
+    function hideResult(id) {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      el.classList.remove('show');
+    }
+
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', 'false'));
+        document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+        btn.setAttribute('aria-selected', 'true');
+        document.getElementById(btn.dataset.target).classList.add('active');
+      });
+    });
+
+    function toUtcDate(value) {
+      const [y, m, d] = value.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d));
+    }
+
+    function calcDays() {
+      setError('daysError');
+      const invStartV = document.getElementById('invStart').value;
+      const invEndV = document.getElementById('invEnd').value;
+      if (!invStartV || !invEndV) {
+        setError('daysError', '請先輸入盤查期間起日與迄日。');
+        return;
+      }
+
+      const actStartV = document.getElementById('actStart').value || invStartV;
+      const actEndV = document.getElementById('actEnd').value || invEndV;
+      const invStart = toUtcDate(invStartV);
+      const invEnd = toUtcDate(invEndV);
+      const actStart = toUtcDate(actStartV);
+      const actEnd = toUtcDate(actEndV);
+
+      if (invStart > invEnd || actStart > actEnd) {
+        setError('daysError', '起日不可晚於迄日。');
+        return;
+      }
+
+      const method = document.getElementById('dayMethod').value;
+      const addDay = method === 'inclusive' ? 1 : 0;
+      const totalActivityDays = (actEnd - actStart) / 86400000 + addDay;
+
+      if (totalActivityDays <= 0) {
+        setError('daysError', '活動總天數必須大於 0。');
+        return;
+      }
+
+      const effectiveStart = new Date(Math.max(invStart.getTime(), actStart.getTime()));
+      const effectiveEnd = new Date(Math.min(invEnd.getTime(), actEnd.getTime()));
+
+      if (effectiveStart > effectiveEnd) {
+        setError('daysError', '活動期間與盤查期間沒有重疊。');
+        hideResult('daysResult');
+        return;
+      }
+
+      const effectiveDays = (effectiveEnd - effectiveStart) / 86400000 + addDay;
+      const allocationRatio = effectiveDays / totalActivityDays;
+      const effectiveStartText = effectiveStart.toISOString().slice(0, 10);
+      const effectiveEndText = effectiveEnd.toISOString().slice(0, 10);
+      const methodText = method === 'inclusive' ? '含起訖日' : '日期差';
+
+      const activityAmountRaw = document.getElementById('activityAmount').value;
+      const activityUnit = document.getElementById('activityUnit').value.trim() || '單位';
+      let allocationHtml = '';
+      let allocationResultText = '未輸入活動總數據';
+
+      if (activityAmountRaw !== '') {
+        const activityAmount = Number(activityAmountRaw);
+        if (!Number.isFinite(activityAmount) || activityAmount < 0) {
+          setError('daysError', '活動總數據必須為 0 以上的數值。');
+          return;
+        }
+
+        const allocatedAmount = activityAmount * allocationRatio;
+        allocationHtml = `
+          <br><strong class="big">盤查期間分攤數據：${fmt(allocatedAmount)} ${escapeHtml(activityUnit)}</strong>
+          <div class="formula">
+            分攤比例 = 有效天數 ÷ 活動總天數 = ${fmt(effectiveDays)} ÷ ${fmt(totalActivityDays)}
+            = ${fmt(allocationRatio)}（${fmt(allocationRatio * 100)}%）<br>
+            分攤數據 = ${fmt(activityAmount)} ${escapeHtml(activityUnit)} × ${fmt(effectiveDays)} ÷ ${fmt(totalActivityDays)}
+            = ${fmt(allocatedAmount)} ${escapeHtml(activityUnit)}
+          </div>
+        `;
+        allocationResultText = `${fmt(allocatedAmount)} ${activityUnit}`;
+      }
+
+      showResult('daysResult', `
+        <strong class="big">活動總天數：${fmt(totalActivityDays)} 日</strong><br>
+        <strong class="big effective-days">盤查期間內有效天數：${fmt(effectiveDays)} 日</strong><br>
+        有效天數占比：${fmt(allocationRatio * 100)}%
+        <div class="formula">
+          活動期間：${actStartV} ～ ${actEndV}<br>
+          活動總天數：(${actEndV} − ${actStartV}) ${addDay ? '+ 1 日' : ''} = ${fmt(totalActivityDays)} 日<br>
+          有效期間：${effectiveStartText} ～ ${effectiveEndText}<br>
+          有效天數：(${effectiveEndText} − ${effectiveStartText}) ${addDay ? '+ 1 日' : ''} = ${fmt(effectiveDays)} 日
+        </div>
+        ${allocationHtml}
+      `);
+
+      currentResults.days = {
+        module: '天數與比例分攤',
+        inputs: `盤查期間 ${invStartV}～${invEndV}；活動期間 ${actStartV}～${actEndV}；方式 ${methodText}；活動總數據 ${activityAmountRaw || '未輸入'} ${activityUnit}`,
+        formula: '活動總天數 = 活動迄日 - 活動起日 + 1；有效天數 = 與盤查期間重疊天數；分攤數據 = 活動總數據 × 有效天數 ÷ 活動總天數',
+        result: `總天數 ${fmt(totalActivityDays)} 日；有效天數 ${fmt(effectiveDays)} 日；比例 ${fmt(allocationRatio * 100)}%；分攤結果 ${allocationResultText}`
+      };
+    }
+
+    function resetDays() {
+      ['invStart','invEnd','actStart','actEnd','activityAmount'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('dayMethod').value = 'inclusive';
+      document.getElementById('activityUnit').value = 'kg';
+      setError('daysError');
+      hideResult('daysResult');
+      delete currentResults.days;
+    }
+
+    const mbMassToKg = { g: 0.001, kg: 1, t: 1000 };
+
+    function getMbAtomicValues() {
+      const basis = document.getElementById('mbAtomicBasis').value;
+      if (basis === 'standard') {
+        const C = 12.011, H = 1.008, O = 15.999;
+        return { basis, label: '標準原子量（小數）', C, H, O,
+          co2Mw: C + 2 * O, co2ToC: (C + 2 * O) / C,
+          acetyleneMw: 2 * C + 2 * H, butaneMw: 4 * C + 10 * H };
+      }
+      const C = 12, H = 1, O = 16;
+      return { basis: 'moenv', label: '台灣環境部盤查指引（整數）', C, H, O,
+        co2Mw: 44, co2ToC: 44 / 12, acetyleneMw: 26, butaneMw: 58 };
+    }
+
+    function updateMbAtomicBasis() {
+      const atomic = getMbAtomicValues();
+      const note = document.getElementById('mbAtomicBasisNote');
+      note.textContent = atomic.basis === 'standard'
+        ? `採 CO₂/C = ${atomic.co2Mw.toFixed(3)}/${atomic.C.toFixed(3)}；乙炔分子量 = ${atomic.acetyleneMw.toFixed(3)}。`
+        : '採 CO₂/C = 44/12；乙炔分子量 = 26。';
+      updateMbPreset();
+      hideResult('mbResult');
+      delete currentResults.massBalance;
+    }
+
+    function updateMbQuantityMethod() {
+      const method = document.getElementById('mbQuantityMethod').value;
+      document.getElementById('mbDirectArea').classList.toggle('hidden', method !== 'direct');
+      document.getElementById('mbStockArea').classList.toggle('hidden', method !== 'stock');
+      document.getElementById('mbActivitySourceWrap').classList.toggle('hidden', method !== 'direct');
+      hideResult('mbResult');
+      delete currentResults.massBalance;
+    }
+
+    function updateMbPreset() {
+      const preset = document.getElementById('mbPreset').value;
+      const atomic = getMbAtomicValues();
+      const name = document.getElementById('mbMaterialName');
+      const purity = document.getElementById('mbPurity');
+      const carbon = document.getElementById('mbCarbonContent');
+      const note = document.getElementById('mbCarbonNote');
+      const formulaArea = document.getElementById('mbFormulaArea');
+
+      formulaArea.classList.add('hidden');
+      purity.value = 100;
+      document.getElementById('mbOxidation').value = 100;
+
+      if (preset === 'acetylene') {
+        name.value = '乙炔';
+        const carbonMass = 2 * atomic.C;
+        const carbonPct = carbonMass / atomic.acetyleneMw * 100;
+        carbon.value = carbonPct.toFixed(8);
+        note.textContent = atomic.basis === 'standard'
+          ? `乙炔 C₂H₂：碳含量 = ${carbonMass.toFixed(3)}／${atomic.acetyleneMw.toFixed(3)} = ${carbonPct.toFixed(4)}%。`
+          : '乙炔 C₂H₂：碳含量 = 24／26 = 92.3077%。';
+      } else if (preset === 'butaneTorch') {
+        name.value = '瓦斯噴燈燃料（丁烷／異丁烷）';
+        const carbonMass = 4 * atomic.C;
+        const carbonPct = carbonMass / atomic.butaneMw * 100;
+        carbon.value = carbonPct.toFixed(8);
+        note.textContent = atomic.basis === 'standard'
+          ? `丁烷／異丁烷 C₄H₁₀：碳含量 = ${carbonMass.toFixed(3)}／${atomic.butaneMw.toFixed(3)} = ${carbonPct.toFixed(4)}%。請先確認罐身或 SDS 的燃料成分。`
+          : '丁烷／異丁烷 C₄H₁₀：碳含量 = 48／58 = 82.7586%。請先確認罐身或 SDS 的燃料成分。';
+      } else if (preset === 'weldingSS308L') {
+        name.value = '焊條 SS308L';
+        carbon.value = 0.04;
+        note.textContent = '0.04 wt% 為環境部指引範例；正式盤查請優先使用實際產品標示或供應商測試報告。';
+      } else if (preset === 'weldingCustom') {
+        name.value = '焊條';
+        carbon.value = '';
+        note.textContent = '請輸入供應商商品標示、材質證明或測試報告中的碳含量 wt%。無佐證時，依主管機關指引可採保守值 100%。';
+      } else if (preset === 'customCarbon') {
+        name.value = '自訂含碳物料';
+        carbon.value = '';
+        note.textContent = '請輸入物料的質量百分比碳含量 wt%。';
+      } else {
+        name.value = '自訂化合物';
+        formulaArea.classList.remove('hidden');
+        document.getElementById('mbCarbonAtoms').value = 1;
+        document.getElementById('mbMolecularWeight').value = '';
+        carbon.value = '';
+        note.textContent = '碳含量將由「碳原子數 × 12 ÷ 分子量」自動計算。';
+      }
+
+      setError('mbError');
+      hideResult('mbResult');
+      delete currentResults.massBalance;
+    }
+
+    function updateFormulaCarbon() {
+      if (document.getElementById('mbPreset').value !== 'customFormula') return;
+      const atoms = num('mbCarbonAtoms');
+      const mw = num('mbMolecularWeight');
+      const atomic = getMbAtomicValues();
+      const carbon = document.getElementById('mbCarbonContent');
+      if (Number.isFinite(atoms) && atoms >= 0 && Number.isFinite(mw) && mw > 0) {
+        const pct = atoms * atomic.C / mw * 100;
+        carbon.value = pct.toFixed(8);
+        document.getElementById('mbCarbonNote').textContent =
+          `碳含量 = ${fmt(atoms)} × ${fmt(atomic.C)} ÷ ${fmt(mw)} = ${fmt(pct)}%。`;
+      } else {
+        carbon.value = '';
+      }
+    }
+
+    function getMbActivityKg() {
+      const method = document.getElementById('mbQuantityMethod').value;
+
+      if (method === 'direct') {
+        const amount = num('mbActivityAmount');
+        const unit = document.getElementById('mbActivityUnit').value;
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new Error('物料數量必須為 0 以上的數值。');
+        }
+        return {
+          kg: amount * mbMassToKg[unit],
+          detail: `${fmt(amount)} ${unit}`,
+          formula: `直接活動量 = ${fmt(amount)} ${unit} = ${fmt(amount * mbMassToKg[unit])} kg`,
+          source: document.getElementById('mbActivitySource').value
+        };
+      }
+
+      const ids = ['mbBeginning','mbPurchased','mbOtherIn','mbEnding','mbRecovered','mbOtherOut'];
+      const values = ids.map(num);
+      if (values.some(v => !Number.isFinite(v) || v < 0)) {
+        throw new Error('庫存平衡各欄位必須為 0 以上的數值。');
+      }
+
+      const [beginning, purchased, otherIn, ending, recovered, otherOut] = values;
+      const used = beginning + purchased + otherIn - ending - recovered - otherOut;
+      if (used < 0) {
+        throw new Error('庫存平衡結果為負值，請檢查期初、進貨、期末存量、退回量及單位。');
+      }
+
+      const unit = document.getElementById('mbStockUnit').value;
+      return {
+        kg: used * mbMassToKg[unit],
+        detail: `${fmt(used)} ${unit}`,
+        formula:
+          `使用量 = ${fmt(beginning)} + ${fmt(purchased)} + ${fmt(otherIn)} − ${fmt(ending)} − ${fmt(recovered)} − ${fmt(otherOut)} = ${fmt(used)} ${unit} = ${fmt(used * mbMassToKg[unit])} kg`,
+        source: 'stock'
+      };
+    }
+
+    function calcMassBalance() {
+      setError('mbError');
+
+      try {
+        const activity = getMbActivityKg();
+        const purity = num('mbPurity');
+        const carbonContent = num('mbCarbonContent');
+        const oxidation = num('mbOxidation');
+
+        if (![purity, carbonContent, oxidation].every(v => Number.isFinite(v) && v >= 0 && v <= 100)) {
+          throw new Error('純度、碳含量及氧化／燃燒效率必須介於 0% 至 100%。');
+        }
+
+        const material = document.getElementById('mbMaterialName').value.trim() || '未命名物料';
+        const atomic = getMbAtomicValues();
+        const carbonKg = activity.kg * purity / 100 * carbonContent / 100;
+        const oxidizedCarbonKg = carbonKg * oxidation / 100;
+        const co2Kg = oxidizedCarbonKg * atomic.co2ToC;
+        const co2Ton = co2Kg / 1000;
+
+        let basisWarning = '';
+        if (activity.source === 'purchase') {
+          basisWarning =
+            '<br><span style="color:#8a5a00;font-weight:700;">目前以採購量作為活動數據；若盤查年度末仍有剩餘庫存，這會高於實際使用量，建議改用庫存平衡。</span>';
+        }
+
+        const preset = document.getElementById('mbPreset').value;
+        let presetNote = '';
+        if (preset === 'weldingSS308L') {
+          presetNote =
+            '<br><span style="color:#8a5a00;">SS308L 的 0.04 wt% 是指引示例值，不代表所有品牌或型號；正式結果應以實際產品資料為準。</span>';
+        } else if (preset === 'butaneTorch') {
+          presetNote =
+            '<br><span style="color:#8a5a00;font-weight:700;">本選項僅適用燃料為丁烷或異丁烷（C₄H₁₀）。若為丙烷、丙烯、MAPP 或混合燃料，應依罐身／SDS 成分分別計算後加總。</span>';
+        }
+
+        const ratioText = atomic.basis === 'standard'
+          ? `${fmt(atomic.co2Mw)}／${fmt(atomic.C)}` : '44／12';
+        let directChemicalFormula = '';
+        if (preset === 'acetylene') {
+          const directRatio = 2 * atomic.co2Mw / atomic.acetyleneMw;
+          directChemicalFormula = atomic.basis === 'standard'
+            ? `<br>乙炔直接化學計量：2 × ${fmt(atomic.co2Mw)} ÷ ${fmt(atomic.acetyleneMw)} = ${fmt(directRatio)} kg CO₂/kg 乙炔`
+            : `<br>乙炔直接化學計量：2 × 44 ÷ 26 = 88／26 = ${fmt(directRatio)} kg CO₂/kg 乙炔`;
+        } else if (preset === 'butaneTorch') {
+          const directRatio = 4 * atomic.co2Mw / atomic.butaneMw;
+          directChemicalFormula = atomic.basis === 'standard'
+            ? `<br>丁烷直接化學計量：4 × ${fmt(atomic.co2Mw)} ÷ ${fmt(atomic.butaneMw)} = ${fmt(directRatio)} kg CO₂/kg 丁烷`
+            : `<br>丁烷直接化學計量：8 × 44 ÷ (2 × 58) = 352／116 = ${fmt(directRatio)} kg CO₂/kg 丁烷`;
+        }
+
+        showResult('mbResult', `
+          <strong class="big">CO₂ 排放量：${fmt(co2Ton)} tCO₂e</strong><br>
+          換算為公斤：${fmt(co2Kg)} kg CO₂
+          ${basisWarning}${presetNote}
+          <div class="formula">
+            原子量基準：${escapeHtml(atomic.label)}<br>
+            物料：${escapeHtml(material)}<br>
+            ${activity.formula}<br>
+            物料中碳量 = ${fmt(activity.kg)} kg × ${fmt(purity)}% × ${fmt(carbonContent)}% = ${fmt(carbonKg)} kg-C<br>
+            氧化碳量 = ${fmt(carbonKg)} kg-C × ${fmt(oxidation)}% = ${fmt(oxidizedCarbonKg)} kg-C<br>
+            CO₂ = ${fmt(oxidizedCarbonKg)} kg-C × ${ratioText} = ${fmt(co2Kg)} kg CO₂${directChemicalFormula}<br>
+            公噸 CO₂e = ${fmt(co2Kg)} ÷ 1,000 = ${fmt(co2Ton)} tCO₂e
+          </div>
+        `);
+
+        currentResults.massBalance = {
+          module: '含碳物料質量平衡法',
+          inputs: `${material}；原子量基準 ${atomic.label}；活動量 ${activity.detail}；純度 ${purity}%；碳含量 ${carbonContent} wt%；氧化效率 ${oxidation}%`,
+          formula: `CO₂ = 使用量(kg) × 純度 × 碳含量 × 氧化效率 × ${ratioText}`,
+          result: `${fmt(co2Ton)} tCO₂e；${fmt(co2Kg)} kg CO₂`
+        };
+      } catch (error) {
+        setError('mbError', error.message);
+        hideResult('mbResult');
+        delete currentResults.massBalance;
+      }
+    }
+
+    function resetMassBalance() {
+      document.getElementById('mbAtomicBasis').value = 'moenv';
+      document.getElementById('mbPreset').value = 'acetylene';
+      document.getElementById('mbQuantityMethod').value = 'direct';
+      document.getElementById('mbActivitySource').value = 'used';
+      document.getElementById('mbActivityAmount').value = 10;
+      document.getElementById('mbActivityUnit').value = 'kg';
+      ['mbBeginning','mbOtherIn','mbEnding','mbRecovered','mbOtherOut']
+        .forEach(id => document.getElementById(id).value = 0);
+      document.getElementById('mbPurchased').value = 10;
+      document.getElementById('mbStockUnit').value = 'kg';
+      updateMbQuantityMethod();
+      updateMbAtomicBasis();
+      setError('mbError');
+      hideResult('mbResult');
+      delete currentResults.massBalance;
+    }
+
+    const massFactorsKg = { g: 0.001, kg: 1, t: 1000 };
+    const volumeFactorsL = { mL: 0.001, L: 1, 'm³': 1000 };
+
+    function updateDensityUnits() {
+      const direction = document.getElementById('densityDirection').value;
+      const from = document.getElementById('densityFromUnit');
+      const to = document.getElementById('densityToUnit');
+      const source = direction === 'massToVolume' ? Object.keys(massFactorsKg) : Object.keys(volumeFactorsL);
+      const target = direction === 'massToVolume' ? Object.keys(volumeFactorsL) : Object.keys(massFactorsKg);
+      from.innerHTML = source.map(x => `<option>${x}</option>`).join('');
+      to.innerHTML = target.map(x => `<option>${x}</option>`).join('');
+      if (direction === 'massToVolume') {
+        from.value = 'kg'; to.value = 'L';
+      } else {
+        from.value = 'L'; to.value = 'kg';
+      }
+    }
+
+    function densityToKgPerL(value, unit) {
+      if (unit === 'kg/L' || unit === 'g/mL') return value;
+      if (unit === 'kg/m3') return value / 1000;
+      return NaN;
+    }
+
+    function calcDensity() {
+      setError('densityError');
+      const value = num('densityValue');
+      const density = num('densityNumber');
+      if (!Number.isFinite(value) || value < 0 || !Number.isFinite(density) || density <= 0) {
+        setError('densityError', '原始數值須為 0 以上，密度須大於 0。');
+        return;
+      }
+
+      const direction = document.getElementById('densityDirection').value;
+      const fromUnit = document.getElementById('densityFromUnit').value;
+      const toUnit = document.getElementById('densityToUnit').value;
+      const densityUnit = document.getElementById('densityUnit').value;
+      const rho = densityToKgPerL(density, densityUnit);
+      let result, formulaText;
+
+      if (direction === 'massToVolume') {
+        const kg = value * massFactorsKg[fromUnit];
+        const liters = kg / rho;
+        result = liters / volumeFactorsL[toUnit];
+        formulaText = `體積 = 重量 ÷ 密度 = ${fmt(kg)} kg ÷ ${fmt(rho)} kg/L = ${fmt(liters)} L`;
+      } else {
+        const liters = value * volumeFactorsL[fromUnit];
+        const kg = liters * rho;
+        result = kg / massFactorsKg[toUnit];
+        formulaText = `重量 = 體積 × 密度 = ${fmt(liters)} L × ${fmt(rho)} kg/L = ${fmt(kg)} kg`;
+      }
+
+      showResult('densityResult', `
+        <strong class="big">換算結果：${fmt(result)} ${toUnit}</strong>
+        <div class="formula">
+          ${formulaText}<br>
+          目標單位結果：${fmt(result)} ${toUnit}
+        </div>
+      `);
+
+      currentResults.density = {
+        module: '重量／體積換算',
+        inputs: `${value} ${fromUnit}；密度 ${density} ${densityUnit}；換算至 ${toUnit}`,
+        formula: direction === 'massToVolume' ? '體積 = 重量 ÷ 密度' : '重量 = 體積 × 密度',
+        result: `${fmt(result)} ${toUnit}`
+      };
+    }
+
+    function resetDensity() {
+      document.getElementById('densityValue').value = '';
+      document.getElementById('densityNumber').value = '';
+      document.getElementById('densityDirection').value = 'massToVolume';
+      document.getElementById('densityUnit').value = 'kg/L';
+      updateDensityUnits();
+      setError('densityError');
+      hideResult('densityResult');
+      delete currentResults.density;
+    }
+
+    const units = {
+      mass: {
+        base: 'kg',
+        factors: { mg: 0.000001, g: 0.001, kg: 1, t: 1000 }
+      },
+      volume: {
+        base: 'L',
+        factors: { mL: 0.001, L: 1, 'm³': 1000 }
+      },
+      energy: {
+        base: 'MJ',
+        factors: { kcal: 0.0041868, kWh: 3.6, MJ: 1, GJ: 1000, TJ: 1000000 }
+      },
+      time: {
+        base: 'h',
+        factors: { min: 1/60, h: 1, day: 24, year_365d: 8760 }
+      },
+      emission: {
+        base: 'kgCO₂e',
+        factors: { 'gCO₂e': 0.001, 'kgCO₂e': 1, 'tCO₂e': 1000, 'ktCO₂e': 1000000 }
+      }
+    };
+
+    function updateUnitOptions() {
+      const category = document.getElementById('unitCategory').value;
+      const options = Object.keys(units[category].factors);
+      document.getElementById('unitFrom').innerHTML = options.map(x => `<option>${x}</option>`).join('');
+      document.getElementById('unitTo').innerHTML = options.map(x => `<option>${x}</option>`).join('');
+      document.getElementById('unitTo').selectedIndex = Math.min(1, options.length - 1);
+    }
+
+    function calcUnit() {
+      setError('unitError');
+      const value = num('unitValue');
+      if (!Number.isFinite(value)) {
+        setError('unitError', '請輸入有效數值。');
+        return;
+      }
+
+      const category = document.getElementById('unitCategory').value;
+      const from = document.getElementById('unitFrom').value;
+      const to = document.getElementById('unitTo').value;
+      const factorFrom = units[category].factors[from];
+      const factorTo = units[category].factors[to];
+      const baseValue = value * factorFrom;
+      const result = baseValue / factorTo;
+
+      showResult('unitResult', `
+        <strong class="big">換算結果：${fmt(result)} ${to}</strong>
+        <div class="formula">
+          ${fmt(value)} ${from} × ${fmt(factorFrom)} ÷ ${fmt(factorTo)} = ${fmt(result)} ${to}
+        </div>
+      `);
+
+      currentResults.unit = {
+        module: '單位換算',
+        inputs: `${value} ${from} → ${to}`,
+        formula: `原始值 × ${from} 對基準單位係數 ÷ ${to} 對基準單位係數`,
+        result: `${fmt(result)} ${to}`
+      };
+    }
+
+    function resetUnit() {
+      document.getElementById('unitValue').value = '';
+      document.getElementById('unitCategory').value = 'mass';
+      updateUnitOptions();
+      setError('unitError');
+      hideResult('unitResult');
+      delete currentResults.unit;
+    }
+
+    function addCurrentRecord(key) {
+      const item = currentResults[key];
+      if (!item) {
+        alert('請先完成計算，再加入紀錄。');
+        return;
+      }
+      records.unshift({
+        time: new Date().toLocaleString('zh-TW', { hour12: false }),
+        ...item
+      });
+      localStorage.setItem('carbonCalcRecords', JSON.stringify(records));
+      renderRecords();
+    }
+
+    function renderRecords() {
+      const body = document.getElementById('recordBody');
+      if (!records.length) {
+        body.innerHTML = '<tr><td colspan="6" class="empty">尚無計算紀錄</td></tr>';
+        return;
+      }
+      body.innerHTML = records.map((r, i) => `
+        <tr>
+          <td>${escapeHtml(r.time)}</td>
+          <td>${escapeHtml(r.module)}</td>
+          <td>${escapeHtml(r.inputs)}</td>
+          <td>${escapeHtml(r.formula)}</td>
+          <td>${escapeHtml(r.result)}</td>
+          <td><button class="action danger" onclick="deleteRecord(${i})">刪除</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function deleteRecord(index) {
+      records.splice(index, 1);
+      localStorage.setItem('carbonCalcRecords', JSON.stringify(records));
+      renderRecords();
+    }
+
+    function clearRecords() {
+      if (!records.length || confirm('確定要清除全部計算紀錄嗎？')) {
+        records = [];
+        localStorage.removeItem('carbonCalcRecords');
+        renderRecords();
+      }
+    }
+
+    function csvCell(value) {
+      return `"${String(value ?? '').replaceAll('"', '""')}"`;
+    }
+
+    function exportRecords() {
+      if (!records.length) {
+        alert('目前沒有可匯出的計算紀錄。');
+        return;
+      }
+      const rows = [
+        ['時間','功能','輸入資料','公式','結果'],
+        ...records.map(r => [r.time, r.module, r.inputs, r.formula, r.result])
+      ];
+      const csv = '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `碳盤查計算紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    updateMbQuantityMethod();
+    updateMbAtomicBasis();
+    updateDensityUnits();
+    updateUnitOptions();
+    renderRecords();
+  </script>
+</body>
+</html>
